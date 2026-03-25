@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI 챗봇 자동 생성기 (Gemini 버전)</title>
+<title>AI 챗봇 자동 생성기 (Gemini Pro 안정화 버전)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -451,7 +451,7 @@
         </div>
         <div class="p-step" id="ps2">
           <div class="p-icon">🧠</div>
-          <span>Gemini 모델 분석 중...</span>
+          <span>Gemini Pro 모델 분석 중...</span>
         </div>
         <div class="p-step" id="ps3">
           <div class="p-icon">⚙️</div>
@@ -579,11 +579,11 @@ async function startAnalysis() {
 }
 
 async function callGeminiAnalyze(url, apiKey) {
-  // API URL 수정: gemini-1.5-flash-latest 적용
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+  // 안정적인 gemini-pro 모델 사용
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
   
   const instructionText = `당신은 웹사이트를 분석해서 AI 고객상담 챗봇을 위한 정보를 추출하는 전문가입니다.
-제시된 URL의 일반적인 성격이나 유추 가능한 데이터를 기반으로 아래 JSON 형식으로만 응답하세요. JSON 이외의 텍스트(마크다운 포함)는 절대 포함하지 마세요.
+제시된 URL의 일반적인 성격이나 유추 가능한 데이터를 기반으로 아래 JSON 형식으로만 응답하세요. 마크다운(\`\`\`json) 등 부가적인 텍스트는 절대 포함하지 마세요.
 
 {
   "shopName": "쇼핑몰/사이트 이름",
@@ -591,35 +591,33 @@ async function callGeminiAnalyze(url, apiKey) {
   "summary": "분석 결과 요약 (3-5줄, 한국어)",
   "quickQuestions": ["빠른 질문 1", "빠른 질문 2", "빠른 질문 3", "빠른 질문 4"],
   "systemPrompt": "이 사이트의 AI 상담원을 위한 상세 시스템 프롬프트 (한국어, 대응 매뉴얼 포함)"
-}`;
+}
+
+분석할 사이트: ${url}`;
 
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: instructionText }]
-      },
       contents: [{
         role: "user",
-        parts: [{ text: `이 사이트를 분석해주세요: ${url}` }]
-      }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.2
-      }
+        parts: [{ text: instructionText }]
+      }]
     })
   });
 
   const data = await response.json();
   if (!response.ok) throw new Error(data.error?.message || 'Gemini API 호출 실패');
 
-  const resultText = data.candidates[0].content.parts[0].text;
+  let resultText = data.candidates[0].content.parts[0].text;
+  
+  // 만약 마크다운이 섞여 들어왔을 경우 제거
+  resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
   
   try {
     return JSON.parse(resultText);
   } catch (err) {
-    throw new Error('JSON 파싱에 실패했습니다. API 키나 URL을 확인해주세요.');
+    throw new Error('데이터 파싱에 실패했습니다. 모델이 올바른 JSON을 반환하지 않았습니다.');
   }
 }
 
@@ -682,24 +680,33 @@ async function chatSend() {
 
   input.value = '';
   addChatMsg(text, 'user');
-  chatHistory.push({ role: 'user', parts: [{ text: text }] });
+  
+  // 내부 기록용 보관
+  chatHistory.push({ role: 'user', text: text });
 
   const typing = document.getElementById('chatTyping');
   typing.classList.add('show');
   document.getElementById('chatMsgs').scrollTop = 9999;
 
   try {
-    // API URL 수정: gemini-1.5-flash-latest 적용
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${currentApiKey}`;
+    // gemini-pro 통신용 배열 생성
+    let apiContents = chatHistory.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.text }]
+    }));
+
+    // 첫 질문에만 시스템 프롬프트 부여 (gemini-pro 우회 방식)
+    if (apiContents.length > 0) {
+      apiContents[0].parts[0].text = `[시스템 지시사항: ${systemPrompt}]\n\n사용자: ${apiContents[0].parts[0].text}`;
+    }
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${currentApiKey}`;
     
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        contents: chatHistory
+        contents: apiContents
       })
     });
 
@@ -707,13 +714,15 @@ async function chatSend() {
     if (!response.ok) throw new Error(data.error?.message);
 
     const reply = data.candidates[0].content.parts[0].text;
-    chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+    chatHistory.push({ role: 'bot', text: reply });
 
     typing.classList.remove('show');
     addChatMsg(reply, 'bot');
   } catch (e) {
     typing.classList.remove('show');
     addChatMsg('연결이 불안정해요. API 키나 네트워크를 확인해 주세요 🙏', 'bot', true);
+    // 에러 시 마지막 유저 메시지 롤백
+    chatHistory.pop();
   }
 }
 
