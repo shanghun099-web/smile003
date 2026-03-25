@@ -579,7 +579,8 @@ async function startAnalysis() {
 }
 
 async function callGeminiAnalyze(url, apiKey) {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // API URL 수정: gemini-1.5-flash-latest 적용
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
   
   const instructionText = `당신은 웹사이트를 분석해서 AI 고객상담 챗봇을 위한 정보를 추출하는 전문가입니다.
 제시된 URL의 일반적인 성격이나 유추 가능한 데이터를 기반으로 아래 JSON 형식으로만 응답하세요. JSON 이외의 텍스트(마크다운 포함)는 절대 포함하지 마세요.
@@ -688,7 +689,8 @@ async function chatSend() {
   document.getElementById('chatMsgs').scrollTop = 9999;
 
   try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${currentApiKey}`;
+    // API URL 수정: gemini-1.5-flash-latest 적용
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${currentApiKey}`;
     
     const response = await fetch(endpoint, {
       method: "POST",
@@ -723,7 +725,6 @@ function resetAll() {
   document.getElementById('progressArea').classList.remove('show');
   document.getElementById('infoPreview').classList.remove('show');
   
-  // API 키는 편의를 위해 초기화하지 않고 유지
   document.getElementById('urlInput').value = '';
   document.getElementById('urlInput').disabled = false;
   document.getElementById('apiKeyInput').disabled = false;
