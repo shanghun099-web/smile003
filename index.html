@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 챗봇 자동 생성기 (Gemini 버전)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --card: #111827;
+    --border: #1f2d42;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --success: #10b981;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --ocean: #0d3b5e;
+    --wave: #1a6b8a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 10% 20%, rgba(59,130,246,0.12) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 80%, rgba(6,182,212,0.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    z-index: 1;
+  }
+
+  .header {
+    text-align: center;
+    animation: fadeDown 0.5s ease-out;
+  }
+
+  .header h1 {
+    font-family: 'Nanum Myeongjo', serif;
+    font-size: 28px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .header p { color: var(--muted); font-size: 14px; }
+
+  @keyframes fadeDown {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    animation: fadeUp 0.5s ease-out;
+  }
+
+  @keyframes fadeUp {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .step-label {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .card h2 { font-size: 16px; color: var(--text); margin-bottom: 16px; }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .basic-input {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    outline: none;
+    transition: border 0.2s;
+  }
+
+  .basic-input:focus { border-color: var(--accent); }
+  .basic-input::placeholder { color: var(--muted); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+
+  .btn-primary:hover:not(:disabled) { opacity: 0.85; transform: scale(1.02); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .progress-area { display: none; }
+  .progress-area.show { display: block; }
+
+  .progress-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .p-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--muted);
+    transition: color 0.3s;
+  }
+
+  .p-step.active { color: var(--text); }
+  .p-step.done { color: var(--success); }
+
+  .p-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+
+  .p-step.active .p-icon {
+    background: rgba(59,130,246,0.2);
+    animation: spin-pulse 1s linear infinite;
+  }
+
+  .p-step.done .p-icon { background: rgba(16,185,129,0.2); }
+
+  @keyframes spin-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(59,130,246,0); }
+  }
+
+  .info-preview {
+    display: none;
+    background: rgba(16,185,129,0.05);
+    border: 1px solid rgba(16,185,129,0.2);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #a7f3d0;
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .info-preview.show { display: block; }
+
+  .main-layout {
+    display: none;
+    gap: 20px;
+  }
+  .main-layout.show { display: flex; }
+
+  .chat-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .chat-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    height: 520px;
+    overflow: hidden;
+  }
+
+  .chat-header {
+    background: linear-gradient(135deg, var(--ocean), var(--wave));
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .chat-header-avatar {
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .chat-header-info h3 { font-size: 14px; color: white; }
+  .chat-header-info p { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 1px; }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #f7f9fc;
+    scroll-behavior: smooth;
+  }
+
+  .cm-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    animation: fadeUp 0.3s ease-out;
+  }
+  .cm-row.user { flex-direction: row-reverse; }
+
+  .cm-avatar {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--ocean), var(--wave));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+
+  .cm-bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    word-break: keep-all;
+  }
+
+  .cm-bubble.bot {
+    background: white;
+    color: #1a1a2e;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+
+  .cm-bubble.user {
+    background: linear-gradient(135deg, var(--ocean), var(--wave));
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+
+  .cm-bubble.error { background: #fff0f0; color: #c0392b; }
+  .cm-time { font-size: 10px; color: var(--muted); align-self: flex-end; white-space: nowrap; }
+
+  .typing-row { display: none; gap: 8px; align-items: flex-end; }
+  .typing-row.show { display: flex; }
+  .typing-dots {
+    background: white;
+    padding: 10px 14px;
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+    display: flex; gap: 4px; align-items: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+  .td { width: 6px; height: 6px; background: #90a0b0; border-radius: 50%; animation: bounce 1.2s infinite; }
+  .td:nth-child(2) { animation-delay: 0.2s; }
+  .td:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
+  .chat-input-area {
+    padding: 12px 14px;
+    background: white;
+    border-top: 1px solid #e8eef3;
+    display: flex;
+    gap: 8px;
+  }
+
+  .chat-input-area input {
+    flex: 1;
+    border: 1.5px solid #dde8ef;
+    border-radius: 20px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    outline: none;
+    background: #f7f9fc;
+    color: #1a1a2e;
+    transition: border 0.2s;
+  }
+  .chat-input-area input:focus { border-color: var(--wave); background: white; }
+
+  .send-btn {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--ocean), var(--wave));
+    border: none; border-radius: 50%;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: transform 0.2s;
+  }
+  .send-btn:hover { transform: scale(1.08); }
+  .send-btn svg { width: 16px; height: 16px; fill: white; }
+
+  .side-panel {
+    width: 240px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .side-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  .side-card h4 {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .quick-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .quick-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    text-align: left;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .quick-item:hover {
+    background: rgba(59,130,246,0.1);
+    border-color: var(--accent);
+    color: #93c5fd;
+  }
+
+  .site-badge {
+    font-size: 11px;
+    color: var(--muted);
+    word-break: break-all;
+    padding: 8px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .badge-label {
+    font-size: 10px;
+    color: var(--success);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .reset-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    transition: all 0.2s;
+  }
+  .reset-btn:hover { border-color: #ef4444; color: #ef4444; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <h1>🤖 AI 챗봇 자동 생성기</h1>
+    <p>사이트 주소와 Gemini API 키를 넣으면 AI가 스스로 분석해서 챗봇을 구성합니다.</p>
+  </div>
+
+  <div class="card" id="step1">
+    <div class="step-label">Step 1</div>
+    <h2>환경 설정 및 주소 입력</h2>
+    
+    <div class="input-row">
+      <input class="basic-input" id="apiKeyInput" type="password" placeholder="Gemini API Key (필수)" />
+    </div>
+    <div class="input-row">
+      <input class="basic-input" id="urlInput" type="text" placeholder="예: https://www.example.com" />
+      <button class="btn-primary" id="analyzeBtn" onclick="startAnalysis()">분석 시작 →</button>
+    </div>
+
+    <div class="progress-area" id="progressArea">
+      <div class="progress-steps">
+        <div class="p-step" id="ps1">
+          <div class="p-icon">🌐</div>
+          <span>사이트 정보 요청 중...</span>
+        </div>
+        <div class="p-step" id="ps2">
+          <div class="p-icon">🧠</div>
+          <span>Gemini 모델 분석 중...</span>
+        </div>
+        <div class="p-step" id="ps3">
+          <div class="p-icon">⚙️</div>
+          <span>챗봇 맞춤 설정 생성 중...</span>
+        </div>
+        <div class="p-step" id="ps4">
+          <div class="p-icon">✅</div>
+          <span>완료! 챗봇 준비됨</span>
+        </div>
+      </div>
+      <div class="info-preview" id="infoPreview"></div>
+    </div>
+  </div>
+
+  <div class="main-layout" id="mainLayout">
+    <div class="chat-wrap">
+      <div class="chat-box">
+        <div class="chat-header">
+          <div class="chat-header-avatar" id="chatEmoji">🤖</div>
+          <div class="chat-header-info">
+            <h3 id="chatTitle">AI 상담원</h3>
+            <p id="chatSub">24시간 자동 응답</p>
+          </div>
+        </div>
+        <div class="chat-messages" id="chatMsgs"></div>
+        <div class="typing-row" id="chatTyping">
+          <div class="cm-avatar" id="typingEmoji">🤖</div>
+          <div class="typing-dots">
+            <div class="td"></div><div class="td"></div><div class="td"></div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <input type="text" id="chatInput" placeholder="질문을 입력하세요..." onkeydown="if(event.key==='Enter') chatSend()">
+          <button class="send-btn" onclick="chatSend()">
+            <svg viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <div class="side-card">
+        <h4>분석된 사이트</h4>
+        <div class="site-badge">
+          <div class="badge-label">✅ 학습 완료</div>
+          <span id="siteBadgeUrl"></span>
+        </div>
+      </div>
+      <div class="side-card">
+        <h4>빠른 질문</h4>
+        <div class="quick-list" id="quickList"></div>
+      </div>
+      <button class="reset-btn" onclick="resetAll()">🔄 다시 시작하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let systemPrompt = '';
+let chatHistory = [];
+let siteEmoji = '🤖';
+let currentApiKey = '';
+
+function getTime() {
+  return new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
+}
+
+function setStep(stepId, state) {
+  const el = document.getElementById(stepId);
+  el.classList.remove('active', 'done');
+  if (state) el.classList.add(state);
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function startAnalysis() {
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const url = document.getElementById('urlInput').value.trim();
+  
+  if (!apiKey) { alert('Gemini API 키를 입력해 주세요.'); return; }
+  if (!url) { alert('사이트 주소를 입력해 주세요.'); return; }
+
+  currentApiKey = apiKey;
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('urlInput').disabled = true;
+  document.getElementById('apiKeyInput').disabled = true;
+
+  const progress = document.getElementById('progressArea');
+  progress.classList.add('show');
+
+  setStep('ps1', 'active');
+  await delay(600);
+  setStep('ps1', 'done');
+  setStep('ps2', 'active');
+
+  try {
+    const analysisResult = await callGeminiAnalyze(url, apiKey);
+
+    setStep('ps2', 'done');
+    setStep('ps3', 'active');
+
+    const preview = document.getElementById('infoPreview');
+    preview.textContent = analysisResult.summary;
+    preview.classList.add('show');
+
+    await delay(800);
+
+    setStep('ps3', 'done');
+    setStep('ps4', 'active');
+
+    systemPrompt = analysisResult.systemPrompt;
+    siteEmoji = analysisResult.emoji || '🤖';
+
+    await delay(500);
+    setStep('ps4', 'done');
+
+    launchChatbot(url, analysisResult);
+
+  } catch (e) {
+    progress.innerHTML += `<div style="color:#ef4444;margin-top:12px;font-size:13px;">⚠️ 오류: ${e.message}</div>`;
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('urlInput').disabled = false;
+    document.getElementById('apiKeyInput').disabled = false;
+  }
+}
+
+async function callGeminiAnalyze(url, apiKey) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  
+  const instructionText = `당신은 웹사이트를 분석해서 AI 고객상담 챗봇을 위한 정보를 추출하는 전문가입니다.
+제시된 URL의 일반적인 성격이나 유추 가능한 데이터를 기반으로 아래 JSON 형식으로만 응답하세요. JSON 이외의 텍스트(마크다운 포함)는 절대 포함하지 마세요.
+
+{
+  "shopName": "쇼핑몰/사이트 이름",
+  "emoji": "사업 관련 이모지 1개",
+  "summary": "분석 결과 요약 (3-5줄, 한국어)",
+  "quickQuestions": ["빠른 질문 1", "빠른 질문 2", "빠른 질문 3", "빠른 질문 4"],
+  "systemPrompt": "이 사이트의 AI 상담원을 위한 상세 시스템 프롬프트 (한국어, 대응 매뉴얼 포함)"
+}`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: instructionText }]
+      },
+      contents: [{
+        role: "user",
+        parts: [{ text: `이 사이트를 분석해주세요: ${url}` }]
+      }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.2
+      }
+    })
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error?.message || 'Gemini API 호출 실패');
+
+  const resultText = data.candidates[0].content.parts[0].text;
+  
+  try {
+    return JSON.parse(resultText);
+  } catch (err) {
+    throw new Error('JSON 파싱에 실패했습니다. API 키나 URL을 확인해주세요.');
+  }
+}
+
+function launchChatbot(url, data) {
+  document.getElementById('chatEmoji').textContent = data.emoji || '🤖';
+  document.getElementById('typingEmoji').textContent = data.emoji || '🤖';
+  document.getElementById('chatTitle').textContent = (data.shopName || '쇼핑몰') + ' 상담 AI';
+  document.getElementById('chatSub').textContent = '24시간 자동 응답';
+  document.getElementById('siteBadgeUrl').textContent = url;
+
+  const ql = document.getElementById('quickList');
+  ql.innerHTML = '';
+  (data.quickQuestions || []).forEach(q => {
+    const btn = document.createElement('button');
+    btn.className = 'quick-item';
+    btn.textContent = q;
+    btn.onclick = () => { document.getElementById('chatInput').value = q; chatSend(); };
+    ql.appendChild(btn);
+  });
+
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('mainLayout').classList.add('show');
+
+  addChatMsg(`안녕하세요! ${data.shopName || '저희 사이트'}에 오신 것을 환영해요 😊\n궁금한 점이 있으시면 무엇이든 물어보세요!`, 'bot');
+}
+
+function addChatMsg(text, sender, isError = false) {
+  const msgs = document.getElementById('chatMsgs');
+  const row = document.createElement('div');
+  row.className = `cm-row ${sender}`;
+
+  const time = document.createElement('span');
+  time.className = 'cm-time';
+  time.textContent = getTime();
+
+  const bubble = document.createElement('div');
+  bubble.className = `cm-bubble ${sender}${isError ? ' error' : ''}`;
+  bubble.innerHTML = text.replace(/\n/g, '<br>');
+
+  if (sender === 'bot') {
+    const av = document.createElement('div');
+    av.className = 'cm-avatar';
+    av.textContent = siteEmoji;
+    row.appendChild(av);
+    row.appendChild(bubble);
+    row.appendChild(time);
+  } else {
+    row.appendChild(time);
+    row.appendChild(bubble);
+  }
+
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function chatSend() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !systemPrompt || !currentApiKey) return;
+
+  input.value = '';
+  addChatMsg(text, 'user');
+  chatHistory.push({ role: 'user', parts: [{ text: text }] });
+
+  const typing = document.getElementById('chatTyping');
+  typing.classList.add('show');
+  document.getElementById('chatMsgs').scrollTop = 9999;
+
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${currentApiKey}`;
+    
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        contents: chatHistory
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message);
+
+    const reply = data.candidates[0].content.parts[0].text;
+    chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+
+    typing.classList.remove('show');
+    addChatMsg(reply, 'bot');
+  } catch (e) {
+    typing.classList.remove('show');
+    addChatMsg('연결이 불안정해요. API 키나 네트워크를 확인해 주세요 🙏', 'bot', true);
+  }
+}
+
+function resetAll() {
+  systemPrompt = '';
+  chatHistory = [];
+  document.getElementById('step1').style.display = 'block';
+  document.getElementById('mainLayout').classList.remove('show');
+  document.getElementById('progressArea').classList.remove('show');
+  document.getElementById('infoPreview').classList.remove('show');
+  
+  // API 키는 편의를 위해 초기화하지 않고 유지
+  document.getElementById('urlInput').value = '';
+  document.getElementById('urlInput').disabled = false;
+  document.getElementById('apiKeyInput').disabled = false;
+  document.getElementById('analyzeBtn').disabled = false;
+  document.getElementById('chatMsgs').innerHTML = '';
+  
+  const progressArea = document.getElementById('progressArea');
+  progressArea.querySelectorAll('.p-step').forEach(step => step.classList.remove('active', 'done'));
+  const errorMsg = progressArea.querySelector('div[style*="color:#ef4444"]');
+  if (errorMsg) errorMsg.remove();
+}
+</script>
+</body>
+</html>
