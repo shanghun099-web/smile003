@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI 챗봇 자동 생성기 (Gemini 2.5 Flash 최신버전)</title>
+<title>AI 챗봇 자동 생성기 (정확도 향상 버전)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -428,18 +428,21 @@
 <div class="app">
   <div class="header">
     <h1>🤖 AI 챗봇 자동 생성기</h1>
-    <p>사이트 주소와 Gemini API 키를 넣으면 AI가 스스로 분석해서 챗봇을 구성합니다.</p>
+    <p>주소와 주요 상품을 입력하면 AI가 정확하게 챗봇을 구성합니다.</p>
   </div>
 
   <div class="card" id="step1">
     <div class="step-label">Step 1</div>
-    <h2>환경 설정 및 주소 입력</h2>
+    <h2>환경 설정 및 기본 정보 입력</h2>
     
     <div class="input-row">
       <input class="basic-input" id="apiKeyInput" type="password" placeholder="Gemini API Key (필수)" />
     </div>
     <div class="input-row">
-      <input class="basic-input" id="urlInput" type="text" placeholder="예: https://www.example.com" />
+      <input class="basic-input" id="productInput" type="text" placeholder="주요 판매 상품 (예: 꽃게액젓, 멸치액젓 등)" />
+    </div>
+    <div class="input-row">
+      <input class="basic-input" id="urlInput" type="text" placeholder="쇼핑몰 URL 주소" />
       <button class="btn-primary" id="analyzeBtn" onclick="startAnalysis()">분석 시작 →</button>
     </div>
 
@@ -447,11 +450,11 @@
       <div class="progress-steps">
         <div class="p-step" id="ps1">
           <div class="p-icon">🌐</div>
-          <span>사이트 정보 요청 중...</span>
+          <span>기본 정보 수집 중...</span>
         </div>
         <div class="p-step" id="ps2">
           <div class="p-icon">🧠</div>
-          <span>Gemini 2.5 Flash 분석 중...</span>
+          <span>핵심 상품 기반 AI 설계 중...</span>
         </div>
         <div class="p-step" id="ps3">
           <div class="p-icon">⚙️</div>
@@ -529,14 +532,17 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function startAnalysis() {
   const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const product = document.getElementById('productInput').value.trim();
   const url = document.getElementById('urlInput').value.trim();
   
   if (!apiKey) { alert('Gemini API 키를 입력해 주세요.'); return; }
+  if (!product) { alert('정확한 챗봇 생성을 위해 주요 판매 상품을 반드시 입력해 주세요.'); return; }
   if (!url) { alert('사이트 주소를 입력해 주세요.'); return; }
 
   currentApiKey = apiKey;
   document.getElementById('analyzeBtn').disabled = true;
   document.getElementById('urlInput').disabled = true;
+  document.getElementById('productInput').disabled = true;
   document.getElementById('apiKeyInput').disabled = true;
 
   const progress = document.getElementById('progressArea');
@@ -548,7 +554,7 @@ async function startAnalysis() {
   setStep('ps2', 'active');
 
   try {
-    const analysisResult = await callGeminiAnalyze(url, apiKey);
+    const analysisResult = await callGeminiAnalyze(url, apiKey, product);
 
     setStep('ps2', 'done');
     setStep('ps3', 'active');
@@ -574,23 +580,28 @@ async function startAnalysis() {
     progress.innerHTML += `<div style="color:#ef4444;margin-top:12px;font-size:13px;">⚠️ 오류: ${e.message}</div>`;
     document.getElementById('analyzeBtn').disabled = false;
     document.getElementById('urlInput').disabled = false;
+    document.getElementById('productInput').disabled = false;
     document.getElementById('apiKeyInput').disabled = false;
   }
 }
 
-async function callGeminiAnalyze(url, apiKey) {
-  // 현재 구글이 공식적으로 지원하는 gemini-2.5-flash 모델 적용
+async function callGeminiAnalyze(url, apiKey, product) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   
-  const instructionText = `당신은 웹사이트를 분석해서 AI 고객상담 챗봇을 위한 정보를 추출하는 전문가입니다.
-제시된 URL의 일반적인 성격이나 유추 가능한 데이터를 기반으로 아래 JSON 형식으로만 응답하세요. JSON 이외의 텍스트(마크다운 포함)는 절대 포함하지 마세요.
+  const instructionText = `당신은 주어진 데이터를 바탕으로 AI 고객상담 챗봇 환경을 설정하는 전문가입니다.
+대상 쇼핑몰 URL: ${url}
+주요 취급 상품: ${product}
+
+[중요 지시사항]
+반드시 위 '주요 취급 상품(${product})'을 핵심 데이터로 삼아 챗봇의 역할을 설정하십시오. URL 주소의 일부 영문자만 보고 낚시 용품점 등 다른 엉뚱한 업종으로 유추하는 것을 엄격히 금지합니다.
+아래 JSON 형식으로만 응답하세요. JSON 이외의 텍스트(마크다운 포함)는 절대 포함하지 마세요.
 
 {
-  "shopName": "쇼핑몰/사이트 이름",
-  "emoji": "사업 관련 이모지 1개",
-  "summary": "분석 결과 요약 (3-5줄, 한국어)",
+  "shopName": "쇼핑몰 이름 (유추가 어려우면 '[주요상품] 전문몰' 형식으로 작성)",
+  "emoji": "상품과 관련된 이모지 1개",
+  "summary": "입력된 상품(${product})을 중심으로 한 챗봇 설정 완료 요약 (3줄, 한국어)",
   "quickQuestions": ["빠른 질문 1", "빠른 질문 2", "빠른 질문 3", "빠른 질문 4"],
-  "systemPrompt": "이 사이트의 AI 상담원을 위한 상세 시스템 프롬프트 (한국어, 대응 매뉴얼 포함)"
+  "systemPrompt": "이 사이트의 AI 상담원을 위한 상세 시스템 프롬프트 (한국어, 핵심 상품 정보 반영, 대응 매뉴얼 포함)"
 }`;
 
   const response = await fetch(endpoint, {
@@ -602,7 +613,7 @@ async function callGeminiAnalyze(url, apiKey) {
       },
       contents: [{
         role: "user",
-        parts: [{ text: `이 사이트를 분석해주세요: ${url}` }]
+        parts: [{ text: `이 정보를 바탕으로 챗봇 설정을 분석해주세요.` }]
       }],
       generationConfig: {
         responseMimeType: "application/json",
@@ -619,7 +630,7 @@ async function callGeminiAnalyze(url, apiKey) {
   try {
     return JSON.parse(resultText);
   } catch (err) {
-    throw new Error('JSON 파싱에 실패했습니다. API 키나 URL을 확인해주세요.');
+    throw new Error('JSON 파싱에 실패했습니다. 데이터를 다시 확인해주세요.');
   }
 }
 
@@ -643,7 +654,7 @@ function launchChatbot(url, data) {
   document.getElementById('step1').style.display = 'none';
   document.getElementById('mainLayout').classList.add('show');
 
-  addChatMsg(`안녕하세요! ${data.shopName || '저희 사이트'}에 오신 것을 환영해요 😊\n궁금한 점이 있으시면 무엇이든 물어보세요!`, 'bot');
+  addChatMsg(`안녕하세요! ${data.shopName || '저희 쇼핑몰'}에 오신 것을 환영해요 😊\n궁금한 점이 있으시면 무엇이든 물어보세요!`, 'bot');
 }
 
 function addChatMsg(text, sender, isError = false) {
@@ -689,7 +700,6 @@ async function chatSend() {
   document.getElementById('chatMsgs').scrollTop = 9999;
 
   try {
-    // gemini-2.5-flash 모델 적용
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${currentApiKey}`;
     
     const response = await fetch(endpoint, {
@@ -726,7 +736,9 @@ function resetAll() {
   document.getElementById('infoPreview').classList.remove('show');
   
   document.getElementById('urlInput').value = '';
+  document.getElementById('productInput').value = '';
   document.getElementById('urlInput').disabled = false;
+  document.getElementById('productInput').disabled = false;
   document.getElementById('apiKeyInput').disabled = false;
   document.getElementById('analyzeBtn').disabled = false;
   document.getElementById('chatMsgs').innerHTML = '';
