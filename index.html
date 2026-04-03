@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>누에마 배송 정산 관리</title>
+    <title>누에마 배송 정산 관리 v4.0</title>
     <style>
         :root {
             --bg-color: #f4f6f8;
@@ -38,7 +38,7 @@
         /* List Items */
         .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
         .list-item:last-child { border-bottom: none; }
-        .badge { background: var(--highlight); color: var(--primary); padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; }
+        .badge { background: var(--highlight); color: var(--primary); padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
         
         /* Input Table */
         .input-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px; }
@@ -51,6 +51,8 @@
         
         .settle-dday { font-weight: bold; color: #d32f2f; }
         .settle-safe { color: #388e3c; }
+
+        .rule-badge { display: inline-block; background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color: #555; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -69,10 +71,27 @@
                 <label>배송 단가 (원/건)</label>
                 <input type="number" id="clientPrice" placeholder="예: 800">
             </div>
-            <div class="form-group">
-                <label>매월 정산일</label>
-                <input type="number" id="clientSettleDay" placeholder="예: 15 (매월 15일 정산)" min="1" max="31">
+            
+            <div style="background: var(--highlight); padding: 10px; border-radius: 8px; margin-bottom: 12px;">
+                <div style="font-size: 0.9rem; font-weight: bold; color: var(--primary); margin-bottom: 10px;">정산 규칙 설정</div>
+                <div class="form-group">
+                    <label>마감일 (매월)</label>
+                    <input type="number" id="clientCutoffDay" placeholder="예: 25 (25일 마감)" min="1" max="31">
+                </div>
+                <div class="form-group">
+                    <label>지급 기준월</label>
+                    <select id="clientMonthOffset">
+                        <option value="0">당월 지급</option>
+                        <option value="1" selected>익월 지급</option>
+                        <option value="2">익익월 지급</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>지급일 (입금일)</label>
+                    <input type="number" id="clientPayoutDay" placeholder="예: 7 (7일 입금)" min="1" max="31">
+                </div>
             </div>
+
             <button onclick="addClient()">등록하기</button>
         </div>
         <div class="card">
@@ -88,8 +107,7 @@
                 <label>입력 일자</label>
                 <input type="date" id="inputDate">
             </div>
-            <div id="inputForms">
-                </div>
+            <div id="inputForms"></div>
             <button onclick="saveDailyRecords()" style="margin-top: 15px;">오늘 실적 저장</button>
         </div>
     </div>
@@ -120,16 +138,39 @@
 </nav>
 
 <script>
+    // -----------------------------------------
     // 데이터 구조 초기화
+    // -----------------------------------------
     let clients = JSON.parse(localStorage.getItem('nouema_clients')) || [];
     let records = JSON.parse(localStorage.getItem('nouema_records')) || {}; 
-    // records 형태: { "2026-04-03": { "client_id": { cumulative: 70, daily: 10 } } }
+    const offsetTexts = ["당월", "익월", "익익월"];
 
     // 오늘 날짜 기본 세팅
     document.getElementById('inputDate').valueAsDate = new Date();
     document.getElementById('recordMonth').value = new Date().toISOString().slice(0, 7);
 
+    // -----------------------------------------
+    // 코어 유틸: 배송일 기준 실제 정산일 계산 함수
+    // -----------------------------------------
+    function getPayoutDate(dateStr, rule) {
+        const d = new Date(dateStr);
+        let year = d.getFullYear();
+        let month = d.getMonth();
+        let day = d.getDate();
+
+        let targetMonth = month;
+        // 배송일이 마감일을 지났다면 다음 결제 사이클로 이월
+        if (day > rule.cutoffDay) {
+            targetMonth += 1;
+        }
+        
+        let payoutMonth = targetMonth + rule.monthOffset;
+        return new Date(year, payoutMonth, rule.payoutDay);
+    }
+
+    // -----------------------------------------
     // 탭 전환 로직
+    // -----------------------------------------
     function switchTab(tabName) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -143,54 +184,67 @@
         if(tabName === 'settle') renderSettlements();
     }
 
-    // 1. 거래처 등록 로직
+    // -----------------------------------------
+    // 1. 거래처 등록 로직 (복잡한 정산 룰 반영)
+    // -----------------------------------------
     function addClient() {
         const name = document.getElementById('clientName').value;
         const price = Number(document.getElementById('clientPrice').value);
-        const settleDay = Number(document.getElementById('clientSettleDay').value);
+        const cutoffDay = Number(document.getElementById('clientCutoffDay').value);
+        const monthOffset = Number(document.getElementById('clientMonthOffset').value);
+        const payoutDay = Number(document.getElementById('clientPayoutDay').value);
 
-        if(!name || !price || !settleDay) return alert('모든 정보를 입력해주세요.');
+        if(!name || !price || !cutoffDay || !payoutDay) return alert('모든 정보를 입력해주세요.');
 
         const newClient = {
             id: Date.now().toString(),
             name: name,
             price: price,
-            settleDay: settleDay
+            rule: { cutoffDay, monthOffset, payoutDay }
         };
+        
         clients.push(newClient);
         localStorage.setItem('nouema_clients', JSON.stringify(clients));
         
         document.getElementById('clientName').value = '';
         document.getElementById('clientPrice').value = '';
-        document.getElementById('clientSettleDay').value = '';
+        document.getElementById('clientCutoffDay').value = '';
+        document.getElementById('clientMonthOffset').value = '1';
+        document.getElementById('clientPayoutDay').value = '';
+        
         renderClientList();
         alert('거래처가 등록되었습니다.');
     }
 
     function renderClientList() {
         const list = document.getElementById('clientList');
-        list.innerHTML = clients.map(c => `
-            <div class="list-item">
+        list.innerHTML = clients.map(c => {
+            // 과거 버전 데이터(단순 settleDay만 있던 구조) 호환성 처리
+            const rule = c.rule || { cutoffDay: 31, monthOffset: 0, payoutDay: c.settleDay || 1 };
+            
+            return `
+            <div class="list-item" style="align-items: flex-start;">
                 <div>
-                    <strong>${c.name}</strong> <span class="badge">${c.price.toLocaleString()}원</span>
+                    <strong>${c.name}</strong> <span class="badge">${c.price.toLocaleString()}원</span><br>
+                    <span class="rule-badge">매월 ${rule.cutoffDay}일 마감 → ${offsetTexts[rule.monthOffset]} ${rule.payoutDay}일 지급</span>
                 </div>
-                <div style="font-size: 0.85rem; color: #666;">매월 ${c.settleDay}일 정산</div>
             </div>
-        `).join('');
+        `}).join('');
     }
 
+    // -----------------------------------------
     // 2. 당일 입력 로직 (누적 계산)
+    // -----------------------------------------
     function renderInputForms() {
         const container = document.getElementById('inputForms');
         const todayStr = document.getElementById('inputDate').value;
         
         if(clients.length === 0) {
-            container.innerHTML = '<p style="color:#777; text-align:center;">등록된 거래처가 없습니다.</p>';
+            container.innerHTML = '<p style="color:#777; text-align:center; padding: 20px;">등록된 거래처가 없습니다.</p>';
             return;
         }
 
         container.innerHTML = clients.map(c => {
-            // 가장 최근 누적 데이터 찾기 (오늘 이전)
             let lastCumulative = 0;
             const sortedDates = Object.keys(records).sort().reverse();
             for(let date of sortedDates) {
@@ -200,7 +254,6 @@
                 }
             }
 
-            // 오늘 이미 입력된 값이 있다면 가져오기
             const todayData = records[todayStr]?.[c.id] || { cumulative: '', daily: 0 };
 
             return `
@@ -217,7 +270,6 @@
         }).join('');
     }
 
-    // 누적 입력 시 당일 건수 자동 계산
     function calculateDaily(clientId, lastCumulative) {
         const currentCumulative = Number(document.getElementById(`input_${clientId}`).value);
         const dailyCount = currentCumulative - lastCumulative;
@@ -241,7 +293,6 @@
             if(inputVal !== '') {
                 const currentCumulative = Number(inputVal);
                 
-                // 이전 누적 찾기
                 let lastCumulative = 0;
                 const sortedDates = Object.keys(records).sort().reverse();
                 for(let d of sortedDates) {
@@ -262,9 +313,11 @@
 
     document.getElementById('inputDate').addEventListener('change', renderInputForms);
 
+    // -----------------------------------------
     // 3. 기록 확인 로직
+    // -----------------------------------------
     function renderRecords() {
-        const monthStr = document.getElementById('recordMonth').value; // YYYY-MM
+        const monthStr = document.getElementById('recordMonth').value; 
         const list = document.getElementById('recordList');
         
         let monthTotalCounts = 0;
@@ -310,62 +363,85 @@
         list.innerHTML = summaryHtml + html;
     }
 
-    // 4. 정산 로직
+    // -----------------------------------------
+    // 4. 동적 정산 추적 로직 (가장 핵심 변경부)
+    // -----------------------------------------
     function renderSettlements() {
         const list = document.getElementById('settleList');
         const today = new Date();
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
+        today.setHours(0, 0, 0, 0); // 오늘 자정 기준으로 시간 초기화 (D-Day 정확한 계산을 위해)
 
         if(clients.length === 0) {
-            list.innerHTML = '<p style="text-align:center; color:#777;">거래처를 먼저 등록해주세요.</p>';
+            list.innerHTML = '<p style="text-align:center; color:#777; padding: 20px;">거래처를 먼저 등록해주세요.</p>';
             return;
         }
 
         let html = '';
 
         clients.forEach(c => {
-            // 이번 달 정산일 계산
-            let settleDate = new Date(currentYear, currentMonth, c.settleDay);
+            const rule = c.rule || { cutoffDay: 31, monthOffset: 0, payoutDay: c.settleDay || 1 };
             
-            // 이미 정산일이 지났다면 다음 달로 설정
-            if(today > settleDate) {
-                settleDate = new Date(currentYear, currentMonth + 1, c.settleDay);
+            let payouts = {};
+            let totalPendingAmount = 0;
+
+            // 모든 기록을 뒤지며 이 거래처의 배송건이 언제 정산되는지 분류
+            for (const [dateStr, data] of Object.entries(records)) {
+                if (data[c.id] && data[c.id].daily > 0) {
+                    // 이 배송건의 실제 지급일 계산
+                    let pDate = getPayoutDate(dateStr, rule);
+                    pDate.setHours(0, 0, 0, 0);
+                    
+                    // 지급일이 오늘이거나 미래인 것들만 "미정산"으로 간주
+                    if (pDate >= today) {
+                        let pDateKey = pDate.getTime();
+                        if (!payouts[pDateKey]) payouts[pDateKey] = { date: pDate, amount: 0 };
+                        
+                        let amount = data[c.id].daily * c.price;
+                        payouts[pDateKey].amount += amount;
+                        totalPendingAmount += amount;
+                    }
+                }
             }
 
-            // D-Day 계산
-            const diffTime = settleDate - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            // 가장 가까운 미래의 정산일 찾기
+            let futurePayoutKeys = Object.keys(payouts).sort((a,b) => a - b);
             
-            let dDayText = diffDays === 0 ? 'D-Day' : `D-${diffDays}`;
-            let dDayClass = diffDays <= 3 ? 'settle-dday' : 'settle-safe';
+            if (futurePayoutKeys.length > 0) {
+                let nearestKey = futurePayoutKeys[0];
+                let nearestPayout = payouts[nearestKey];
+                
+                // D-Day 계산
+                let diffTime = nearestPayout.date - today;
+                let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                let dDayText = diffDays === 0 ? 'D-Day' : `D-${diffDays}`;
+                let dDayClass = diffDays <= 3 ? 'settle-dday' : 'settle-safe';
 
-            // 미정산 금액 계산 (간이 로직: 최근 30일 데이터 기준 합산)
-            // 실제 구현에서는 정산 완료 체크 기능이 필요하나, 여기서는 누적 데이터 기반 자동 산출을 시뮬레이션함.
-            let unpaidAmount = 0;
-            let unpaidCount = 0;
-            
-            Object.keys(records).forEach(date => {
-                const recordDate = new Date(date);
-                // 대략적인 이전 정산일 ~ 다음 정산일 사이의 건수 합산 (여기서는 간략화를 위해 최근 실적으로 계산)
-                if(records[date][c.id]) {
-                    unpaidCount += records[date][c.id].daily;
-                }
-            });
-            // 데모용 총합 누적 산출 (실제로는 정산완료된 내역을 제외하는 로직이 추가되어야 함)
-            unpaidAmount = unpaidCount * c.price;
-
-            html += `
-            <div class="list-item" style="flex-direction:column; align-items:flex-start;">
-                <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <strong>${c.name}</strong>
-                    <span class="${dDayClass}">${dDayText} (${settleDate.getMonth()+1}/${settleDate.getDate()})</span>
-                </div>
-                <div style="width:100%; display:flex; justify-content:space-between; font-size:0.9rem; color:#555;">
-                    <span>누적 예상 정산금</span>
-                    <strong>${unpaidAmount.toLocaleString()}원</strong>
-                </div>
-            </div>`;
+                html += `
+                <div class="list-item" style="flex-direction:column; align-items:flex-start;">
+                    <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <strong>${c.name}</strong>
+                        <span class="${dDayClass}">${dDayText} (${nearestPayout.date.getMonth()+1}/${nearestPayout.date.getDate()})</span>
+                    </div>
+                    <div style="width:100%; display:flex; justify-content:space-between; font-size:0.95rem; color:#333; margin-bottom: 4px;">
+                        <span>이번 정산 예정금</span>
+                        <strong style="color:var(--primary);">${nearestPayout.amount.toLocaleString()}원</strong>
+                    </div>
+                    ${futurePayoutKeys.length > 1 ? `
+                    <div style="width:100%; display:flex; justify-content:space-between; font-size:0.8rem; color:#888;">
+                        <span>총 대기 금액 (차기분 포함)</span>
+                        <span>${totalPendingAmount.toLocaleString()}원</span>
+                    </div>` : ''}
+                </div>`;
+            } else {
+                html += `
+                <div class="list-item" style="flex-direction:column; align-items:flex-start; opacity: 0.6;">
+                    <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <strong>${c.name}</strong>
+                        <span style="font-size: 0.8rem;">정산 대기건 없음</span>
+                    </div>
+                </div>`;
+            }
         });
 
         list.innerHTML = html;
