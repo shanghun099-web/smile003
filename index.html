@@ -1,454 +1,1146 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>누에마 배송 정산 관리 v4.0</title>
-    <style>
-        :root {
-            --bg-color: #f4f6f8;
-            --card-bg: #ffffff;
-            --primary: #1a3636;
-            --secondary: #2c5f5f;
-            --text-main: #333333;
-            --text-muted: #777777;
-            --border: #e0e0e0;
-            --highlight: #e6f2f2;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding-bottom: 70px; }
-        header { background-color: var(--primary); color: white; padding: 15px 20px; font-size: 1.2rem; font-weight: bold; text-align: center; }
-        
-        .container { padding: 15px; max-width: 600px; margin: 0 auto; }
-        .card { background: var(--card-bg); border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 5px; }
-        
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 0.9rem; margin-bottom: 5px; color: var(--text-muted); }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 1rem; }
-        
-        button { background-color: var(--secondary); color: white; border: none; padding: 12px; border-radius: 5px; font-size: 1rem; cursor: pointer; width: 100%; font-weight: bold; }
-        button:active { background-color: var(--primary); }
-        
-        /* Navigation */
-        nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid var(--border); box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; max-width: 600px; left: 50%; transform: translateX(-50%); }
-        .nav-item { flex: 1; text-align: center; padding: 12px 0; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; }
-        .nav-item.active { color: var(--primary); font-weight: bold; border-bottom: 3px solid var(--primary); }
-        
-        /* List Items */
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
-        .list-item:last-child { border-bottom: none; }
-        .badge { background: var(--highlight); color: var(--primary); padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
-        
-        /* Input Table */
-        .input-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px; }
-        .input-row div { flex: 1; }
-        .input-row input { width: 80px; padding: 8px; text-align: right; border: 1px solid #ccc; border-radius: 4px; }
-        .calc-result { font-weight: bold; color: var(--secondary); text-align: right; margin-top: 5px; font-size: 0.9rem; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>누에마 · 물결</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/[email protected]/dist/web/static/pretendard.min.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060606;
+    --bg-elev: #0e0e0e;
+    --bg-card: #131313;
+    --line: #1d1d1d;
+    --line-soft: #161616;
+    --text: #ececec;
+    --text-mute: #6b6b6b;
+    --text-dim: #444;
+    --accent: #d4a574;
+    --accent-soft: #b88751;
+    --cool: #5a7a99;
+    --warm: #d4a574;
+    --kr: 'Pretendard', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); }
+  body {
+    color: var(--text);
+    font-family: var(--kr);
+    font-size: 14px;
+    line-height: 1.55;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+    min-height: 100vh;
+  }
+  .app { max-width: 760px; margin: 0 auto; padding: 24px 16px 80px; }
+  
+  /* 헤더 */
+  .header { text-align: center; padding: 28px 0 36px; }
+  .header .eyebrow {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.32em; color: var(--text-mute);
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  .header h1 { 
+    font-size: 32px; font-weight: 200; margin: 0;
+    letter-spacing: -0.03em;
+  }
+  .header .sub { color: var(--text-mute); font-size: 13px; margin-top: 8px; font-weight: 300; }
+  .wave-deco {
+    width: 56px; height: 1px; margin: 18px auto 0;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
 
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        
-        .settle-dday { font-weight: bold; color: #d32f2f; }
-        .settle-safe { color: #388e3c; }
+  /* 카드 */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.25em; color: var(--text-mute);
+    text-transform: uppercase; margin: 0 0 14px;
+  }
+  .card-title .accent { color: var(--accent); }
 
-        .rule-badge { display: inline-block; background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color: #555; margin-top: 4px; }
-    </style>
+  /* 버튼/입력 */
+  .btn {
+    background: transparent; border: 1px solid var(--line);
+    color: var(--text); padding: 10px 16px;
+    font-family: var(--kr); font-size: 13px;
+    border-radius: 10px; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn.primary {
+    background: var(--accent); border-color: var(--accent);
+    color: #1a1408; font-weight: 500;
+  }
+  .btn.primary:hover { background: #e0b888; color: #1a1408; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  input, select {
+    background: var(--bg-elev); border: 1px solid var(--line);
+    color: var(--text); padding: 9px 12px;
+    font-family: var(--mono); font-size: 13px;
+    border-radius: 8px;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  .label {
+    display: block; font-size: 11px; color: var(--text-mute);
+    margin-bottom: 6px; letter-spacing: 0.06em;
+    text-transform: uppercase; font-family: var(--mono);
+  }
+
+  /* 진행 */
+  .progress {
+    height: 2px; background: var(--line);
+    border-radius: 1px; overflow: hidden;
+    margin: 14px 0 6px;
+  }
+  .progress-bar {
+    height: 100%; background: var(--accent); width: 0%;
+    transition: width 0.2s ease;
+  }
+  .progress-label {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--text-mute); display: flex; justify-content: space-between;
+  }
+
+  /* 통계 */
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat { text-align: center; padding: 8px 4px; }
+  .stat-num { font-family: var(--mono); font-size: 20px; color: var(--text); font-weight: 300; }
+  .stat-label { font-size: 9px; color: var(--text-mute); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 4px; }
+
+  /* 캔버스 */
+  canvas { display: block; width: 100%; border-radius: 10px; background: var(--bg-elev); }
+
+  /* 칩 */
+  .chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--bg-elev); border: 1px solid var(--line);
+    font-family: var(--mono); font-size: 15px; color: var(--text);
+    margin: 4px; transition: all 0.2s;
+  }
+  .chip.glow {
+    background: radial-gradient(circle at 30% 30%, #f0c896, var(--accent));
+    color: #1a1408; border-color: var(--accent); font-weight: 500;
+    box-shadow: 0 0 20px rgba(212, 165, 116, 0.35);
+  }
+  .chip.cool {
+    background: radial-gradient(circle at 30% 30%, #7a98b8, var(--cool));
+    color: #0a1018; border-color: var(--cool);
+  }
+
+  /* 추천 */
+  .recommend {
+    text-align: center; padding: 32px 18px;
+    background: 
+      radial-gradient(ellipse at top, rgba(212, 165, 116, 0.08), transparent 60%),
+      var(--bg-card);
+    border: 1px solid #2a2014; border-radius: 16px;
+    margin-bottom: 16px;
+  }
+  .recommend-title {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.32em; color: var(--accent);
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .recommend-sub { font-size: 12px; color: var(--text-mute); margin-bottom: 22px; }
+  .recommend-numbers { margin: 8px 0 18px; }
+  .recommend-meta { font-size: 11px; color: var(--text-mute); font-family: var(--mono); }
+
+  /* 탭 */
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 14px;
+    overflow-x: auto; padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 8px 14px; background: transparent;
+    border: 1px solid var(--line); color: var(--text-mute);
+    border-radius: 20px; font-size: 12px; cursor: pointer;
+    white-space: nowrap; font-family: var(--kr);
+    transition: all 0.15s;
+  }
+  .tab.active { background: var(--bg-elev); color: var(--text); border-color: var(--text-dim); }
+  .tab:hover { color: var(--text); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* 노트 */
+  .note {
+    font-size: 12px; color: var(--text-mute); line-height: 1.7;
+    padding: 14px 16px; background: var(--bg-elev);
+    border-radius: 10px; border-left: 2px solid var(--accent);
+    margin: 14px 0;
+  }
+
+  /* 표 */
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { color: var(--text-mute); font-weight: 400; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
+  tr:last-child td { border-bottom: none; }
+
+  /* 주기 토글 */
+  .period-row {
+    display: flex; gap: 12px; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .period-row:last-child { border-bottom: none; }
+  .period-name { flex: 1; font-family: var(--mono); font-size: 13px; }
+  .period-meta { font-size: 11px; color: var(--text-mute); font-family: var(--mono); }
+  .checkbox {
+    width: 16px; height: 16px; accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* 그리드 */
+  .num-grid {
+    display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px;
+    margin: 8px 0;
+  }
+  @media (max-width: 480px) {
+    .num-grid { grid-template-columns: repeat(7, 1fr); }
+  }
+  .num-cell {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; font-family: var(--mono); font-size: 12px;
+    background: var(--bg-elev); border: 1px solid var(--line);
+    position: relative; overflow: hidden;
+  }
+  .num-cell .energy {
+    position: absolute; inset: 0; pointer-events: none;
+    opacity: 0.5;
+  }
+  .num-cell .lbl { position: relative; z-index: 1; font-weight: 400; }
+
+  /* 레전드 */
+  .legend {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 11px; color: var(--text-mute);
+    margin-top: 10px; font-family: var(--mono);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i {
+    display: inline-block; width: 10px; height: 10px;
+    border-radius: 2px;
+  }
+
+  /* 일반 유틸 */
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .right { margin-left: auto; }
+  .mono { font-family: var(--mono); }
+  .small { font-size: 11px; }
+  .mt-12 { margin-top: 12px; } .mt-16 { margin-top: 16px; }
+  .mb-8 { margin-bottom: 8px; } .mb-12 { margin-bottom: 12px; }
+  .text-mute { color: var(--text-mute); }
+  .text-accent { color: var(--accent); }
+  .center { text-align: center; }
+
+  /* hr 장식 */
+  .divider {
+    height: 1px; margin: 14px 0;
+    background: linear-gradient(90deg, transparent, var(--line), transparent);
+    border: none;
+  }
+
+  /* 푸터 */
+  .footer {
+    text-align: center; margin-top: 40px;
+    font-size: 11px; color: var(--text-dim);
+    font-family: var(--mono); letter-spacing: 0.1em;
+  }
+  .footer .quote {
+    color: var(--text-mute); font-family: var(--kr);
+    font-size: 12px; font-style: italic;
+    margin-bottom: 6px; letter-spacing: 0;
+  }
+</style>
 </head>
 <body>
+<div class="app">
 
-<header>누에마 배송 관리 시스템 v4.0</header>
+  <header class="header">
+    <div class="eyebrow">NOUEMA · WAVE</div>
+    <h1>물결</h1>
+    <div class="sub">번호의 파동, 그 중첩</div>
+    <div class="wave-deco"></div>
+  </header>
 
-<div class="container">
-    <div id="tab-client" class="tab-content">
-        <div class="card">
-            <div class="card-title">🏢 신규 거래처 등록</div>
-            <div class="form-group">
-                <label>거래처명</label>
-                <input type="text" id="clientName" placeholder="예: 예스24, 무신사">
-            </div>
-            <div class="form-group">
-                <label>배송 단가 (원/건)</label>
-                <input type="number" id="clientPrice" placeholder="예: 800">
-            </div>
-            
-            <div style="background: var(--highlight); padding: 10px; border-radius: 8px; margin-bottom: 12px;">
-                <div style="font-size: 0.9rem; font-weight: bold; color: var(--primary); margin-bottom: 10px;">정산 규칙 설정</div>
-                <div class="form-group">
-                    <label>마감일 (매월)</label>
-                    <input type="number" id="clientCutoffDay" placeholder="예: 25 (25일 마감)" min="1" max="31">
-                </div>
-                <div class="form-group">
-                    <label>지급 기준월</label>
-                    <select id="clientMonthOffset">
-                        <option value="0">당월 지급</option>
-                        <option value="1" selected>익월 지급</option>
-                        <option value="2">익익월 지급</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>지급일 (입금일)</label>
-                    <input type="number" id="clientPayoutDay" placeholder="예: 7 (7일 입금)" min="1" max="31">
-                </div>
-            </div>
+  <!-- 데이터 로드 -->
+  <div class="card" id="loader-card">
+    <div class="card-title">데이터 · <span class="accent">DATA</span></div>
+    <div id="loader-empty">
+      <p class="small text-mute" style="margin:0 0 12px;">동행복권 1회차부터 최신 회차까지 모든 당첨 데이터를 불러옵니다. 첫 로드는 시간이 걸리지만 이후엔 캐시됩니다.</p>
+      <div class="btn-row">
+        <button class="btn primary" id="btn-load">불러오기</button>
+        <button class="btn" id="btn-clear">캐시 지우기</button>
+      </div>
+    </div>
+    <div id="loader-progress" style="display:none;">
+      <div class="progress-label">
+        <span id="progress-text">로딩 중…</span>
+        <span id="progress-count">0 / —</span>
+      </div>
+      <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+      <p class="small text-mute" style="margin: 8px 0 0;">중간중간 캐시되니 끊겨도 다시 시도하면 이어서 받습니다.</p>
+    </div>
+    <div id="loader-summary" style="display:none;">
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">회차</div></div>
+        <div class="stat"><div class="stat-num" id="stat-from">—</div><div class="stat-label">시작일</div></div>
+        <div class="stat"><div class="stat-num" id="stat-to">—</div><div class="stat-label">최근일</div></div>
+      </div>
+      <div class="btn-row mt-12">
+        <button class="btn" id="btn-refresh">새 회차 갱신</button>
+        <button class="btn" id="btn-clear2">캐시 지우기</button>
+      </div>
+    </div>
+  </div>
 
-            <button onclick="addClient()">등록하기</button>
-        </div>
-        <div class="card">
-            <div class="card-title">등록된 거래처 목록</div>
-            <div id="clientList"></div>
-        </div>
+  <!-- 분석 영역 -->
+  <div id="analysis" style="display:none;">
+
+    <!-- 종합 추천 -->
+    <div class="recommend" id="recommend">
+      <div class="recommend-title">이번 주의 물결</div>
+      <div class="recommend-sub">다중 주기 보강간섭이 가장 강한 여섯 숫자</div>
+      <div class="recommend-numbers" id="recommend-nums"></div>
+      <div class="recommend-meta" id="recommend-meta"></div>
     </div>
 
-    <div id="tab-input" class="tab-content active">
-        <div class="card">
-            <div class="card-title">✏️ 당일 실적 입력</div>
-            <div class="form-group">
-                <label>입력 일자</label>
-                <input type="date" id="inputDate">
-            </div>
-            <div id="inputForms"></div>
-            <button onclick="saveDailyRecords()" style="margin-top: 15px;">오늘 실적 저장</button>
-        </div>
+    <!-- 주기 설정 -->
+    <div class="card">
+      <div class="card-title">주기 · <span class="accent">CYCLES</span></div>
+      <div id="period-list"></div>
+      <div class="row mt-12" style="gap:8px;">
+        <input type="number" id="custom-period" placeholder="회차 단위 (예: 156)" min="2" max="2000" style="flex:1; min-width:140px;">
+        <button class="btn" id="btn-add-period">주기 추가</button>
+      </div>
+      <p class="small text-mute" style="margin:10px 0 0;">매주 1회차이므로 1년 ≈ 52회차. 3년 ≈ 156, 6년 ≈ 312, 10년 ≈ 520회차.</p>
     </div>
 
-    <div id="tab-record" class="tab-content">
-        <div class="card">
-            <div class="card-title">📋 월별 기록 확인</div>
-            <div class="form-group">
-                <input type="month" id="recordMonth" onchange="renderRecords()">
-            </div>
-            <div id="recordList"></div>
-        </div>
+    <!-- 탭 영역 -->
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-panel="superpose">파동 중첩</div>
+      <div class="tab" data-panel="grid">에너지 격자</div>
+      <div class="tab" data-panel="resonance">동행 공명</div>
+      <div class="tab" data-panel="fft">고유 주기</div>
+      <div class="tab" data-panel="phase">위상 공간</div>
     </div>
 
-    <div id="tab-settle" class="tab-content">
-        <div class="card">
-            <div class="card-title">💰 거래처별 정산 예정 현황</div>
-            <div id="settleList"></div>
+    <!-- 파동 중첩 -->
+    <div class="panel active" id="panel-superpose">
+      <div class="card">
+        <div class="card-title">파동 중첩 · <span class="accent">SUPERPOSITION</span></div>
+        <p class="small text-mute" style="margin:0 0 14px;">선택된 주기들이 만드는 합성 파동. 양(+)에 있는 번호가 보강간섭, 음(−)에 있는 번호가 상쇄 중.</p>
+        <canvas id="canvas-super" height="320"></canvas>
+        <div class="legend">
+          <span><i style="background:var(--accent);"></i>보강 (양)</span>
+          <span><i style="background:var(--cool);"></i>상쇄 (음)</span>
+          <span><i style="background:var(--text-dim);"></i>0 기준선</span>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">번호별 점수 (상위 12)</div>
+        <table id="table-super"></table>
+      </div>
     </div>
+
+    <!-- 격자 -->
+    <div class="panel" id="panel-grid">
+      <div class="card">
+        <div class="card-title">에너지 격자 · <span class="accent">FIELD</span></div>
+        <p class="small text-mute" style="margin:0 0 14px;">1~45 모든 번호의 현재 파동 에너지. 진할수록 강하게 보강 중.</p>
+        <div class="num-grid" id="num-grid"></div>
+        <div class="legend">
+          <span><i style="background:var(--cool);"></i>−강</span>
+          <span><i style="background:#222;"></i>0</span>
+          <span><i style="background:var(--accent);"></i>+강</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 공명 -->
+    <div class="panel" id="panel-resonance">
+      <div class="card">
+        <div class="card-title">동행번호 공명 · <span class="accent">RESONANCE</span></div>
+        <p class="small text-mute" style="margin:0 0 14px;">역대 함께 출현한 번호쌍의 빈도 매트릭스. 밝을수록 자주 동행.</p>
+        <canvas id="canvas-resonance" height="380"></canvas>
+        <div class="mt-12">
+          <div class="label">기준 번호 선택</div>
+          <input type="number" id="resonance-pick" min="1" max="45" value="1">
+          <div id="resonance-result" class="mt-12"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FFT -->
+    <div class="panel" id="panel-fft">
+      <div class="card">
+        <div class="card-title">고유 주기 · <span class="accent">SPECTRUM</span></div>
+        <p class="small text-mute" style="margin:0 0 14px;">번호의 등장 시계열에 푸리에 변환을 걸어 가장 강한 주기 추출. 각 번호가 자기 음(音)을 가진다.</p>
+        <div class="row mb-12">
+          <div class="label">번호</div>
+          <input type="number" id="fft-num" min="1" max="45" value="1" style="width:80px;">
+        </div>
+        <canvas id="canvas-fft" height="220"></canvas>
+        <div id="fft-info" class="mt-12 small text-mute"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">번호별 지배 주기 (모든 45개)</div>
+        <table id="table-fft"></table>
+      </div>
+    </div>
+
+    <!-- 위상 공간 -->
+    <div class="panel" id="panel-phase">
+      <div class="card">
+        <div class="card-title">위상 공간 · <span class="accent">PHASE</span></div>
+        <p class="small text-mute" style="margin:0 0 14px;">선택된 주기에 대해 각 번호가 자기 사이클의 어느 지점에 있는지를 극좌표로 표시. 위상이 가까운 번호들은 함께 보강될 가능성.</p>
+        <div class="row mb-12">
+          <div class="label">기준 주기</div>
+          <select id="phase-period"></select>
+        </div>
+        <canvas id="canvas-phase" height="380"></canvas>
+        <div class="legend">
+          <span>0° = 마침 등장한 직후 / 180° = 가장 멀어진 지점</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong style="color:var(--text);">한 가지 솔직한 말 —</strong><br>
+      로또는 수학적으로 진짜 무작위라 어떤 모델도 당첨 확률을 올리지는 못합니다. 이 도구는 예측이 아니라 <em>의례</em>입니다. 매주 살 때 "내 시스템이 골라준 번호"로 사면 그 자체가 형식이 되고, 풍요로운 시각의 작품이 남습니다. 마음 배달부의 결과 어울리는, 비물질적 가치를 시각화하는 도구로.
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="quote">고요한 물결 하나 띄워 보냅니다</div>
+    NOUEMA · WAVE · v1
+  </div>
 </div>
 
-<nav>
-    <div class="nav-item" onclick="switchTab('client')">🏢 거래처</div>
-    <div class="nav-item active" onclick="switchTab('input')">✏️ 입력</div>
-    <div class="nav-item" onclick="switchTab('record')">📋 기록</div>
-    <div class="nav-item" onclick="switchTab('settle')">💰 정산</div>
-</nav>
-
 <script>
-    // -----------------------------------------
-    // 데이터 구조 초기화
-    // -----------------------------------------
-    let clients = JSON.parse(localStorage.getItem('nouema_clients')) || [];
-    let records = JSON.parse(localStorage.getItem('nouema_records')) || {}; 
-    const offsetTexts = ["당월", "익월", "익익월"];
+/* =========================================================
+   누에마 물결 — 데이터 페치 + 분석 + 시각화
+   ========================================================= */
 
-    // 오늘 날짜 기본 세팅
-    document.getElementById('inputDate').valueAsDate = new Date();
-    document.getElementById('recordMonth').value = new Date().toISOString().slice(0, 7);
+const STORAGE_KEY = 'nouema-wave-draws-v1';
+const PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
 
-    // -----------------------------------------
-    // 코어 유틸: 배송일 기준 실제 정산일 계산 함수
-    // -----------------------------------------
-    function getPayoutDate(dateStr, rule) {
-        const d = new Date(dateStr);
-        let year = d.getFullYear();
-        let month = d.getMonth();
-        let day = d.getDate();
+let DRAWS = [];           // [{drwNo, date, numbers:[...6], bonus}]
+let CYCLES = [            // 사용자 선택 가능 주기 (회차 단위)
+  { name: '1년',  weeks: 52,  on: false },
+  { name: '3년',  weeks: 156, on: true  },
+  { name: '6년',  weeks: 312, on: true  },
+  { name: '10년', weeks: 520, on: true  },
+];
 
-        let targetMonth = month;
-        // 배송일이 마감일을 지났다면 다음 결제 사이클로 이월
-        if (day > rule.cutoffDay) {
-            targetMonth += 1;
-        }
-        
-        let payoutMonth = targetMonth + rule.monthOffset;
-        return new Date(year, payoutMonth, rule.payoutDay);
+/* ---------- 데이터 페치 ---------- */
+async function fetchDraw(drwNo) {
+  const url = `https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=${drwNo}`;
+  for (const proxy of PROXIES) {
+    try {
+      const res = await fetch(proxy(url), { cache: 'no-cache' });
+      if (!res.ok) continue;
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); }
+      catch { continue; }
+      if (data.returnValue !== 'success') return null;
+      return {
+        drwNo: data.drwNo,
+        date: data.drwNoDate,
+        numbers: [data.drwtNo1, data.drwtNo2, data.drwtNo3, data.drwtNo4, data.drwtNo5, data.drwtNo6].sort((a,b)=>a-b),
+        bonus: data.bnusNo
+      };
+    } catch (e) { continue; }
+  }
+  return null;
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.sort((a,b) => a.drwNo - b.drwNo) : [];
+  } catch (e) { return []; }
+}
+function saveCache(draws) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draws)); }
+  catch (e) { console.warn('캐시 저장 실패', e); }
+}
+function clearCache() {
+  localStorage.removeItem(STORAGE_KEY);
+  DRAWS = [];
+}
+
+async function loadAll(onProgress) {
+  // 캐시에서 시작
+  let draws = loadCache();
+  let nextNo = draws.length > 0 ? Math.max(...draws.map(d => d.drwNo)) + 1 : 1;
+
+  // 병렬 배치로 페치
+  const BATCH = 10;
+  let consecutiveFails = 0;
+  let estimatedMax = nextNo + 200; // 처음엔 추정치
+
+  while (consecutiveFails < 2) {
+    const batch = [];
+    for (let i = 0; i < BATCH; i++) batch.push(fetchDraw(nextNo + i));
+    const results = await Promise.all(batch);
+
+    let foundInBatch = 0;
+    results.forEach((r, idx) => {
+      if (r) {
+        draws.push(r);
+        foundInBatch++;
+        estimatedMax = Math.max(estimatedMax, r.drwNo + 100);
+      }
+    });
+    nextNo += BATCH;
+
+    if (foundInBatch === 0) consecutiveFails++;
+    else consecutiveFails = 0;
+
+    onProgress(draws.length, estimatedMax, nextNo);
+
+    // 50회마다 중간 캐시
+    saveCache(draws);
+  }
+
+  draws.sort((a,b) => a.drwNo - b.drwNo);
+  saveCache(draws);
+  return draws;
+}
+
+/* ---------- 통계 ---------- */
+function buildSeries(draws) {
+  // 각 번호별 등장 0/1 시계열
+  const N = draws.length;
+  const series = {};
+  for (let n = 1; n <= 45; n++) series[n] = new Array(N).fill(0);
+  draws.forEach((d, i) => {
+    d.numbers.forEach(n => { series[n][i] = 1; });
+  });
+  return series;
+}
+
+function numberStats(draws, series) {
+  const N = draws.length;
+  const stats = {};
+  for (let n = 1; n <= 45; n++) {
+    const s = series[n];
+    const appearances = [];
+    s.forEach((v, i) => { if (v) appearances.push(i); });
+    const count = appearances.length;
+    const last = appearances.length > 0 ? appearances[appearances.length - 1] : -1;
+    const drawsSinceLast = last >= 0 ? (N - 1 - last) : N;
+    const avgInterval = count > 0 ? N / count : N;
+    stats[n] = { count, last, drawsSinceLast, avgInterval };
+  }
+  return stats;
+}
+
+/* ---------- 다중 주기 파동 ---------- */
+// 각 번호의 시계열에 대해 주기 T의 푸리에 계수를 계산
+// 그 계수의 크기/위상으로 미래 시점에서의 파동값을 합성
+function fourierAt(series, T, t) {
+  // series: 0/1 array, T: 주기 (회차), t: series 끝점으로부터 t 회차 후 (보통 +1)
+  const N = series.length;
+  if (N < T) return { amp: 0, phase: 0, value: 0 };
+  let real = 0, imag = 0;
+  for (let i = 0; i < N; i++) {
+    const theta = 2 * Math.PI * i / T;
+    real += series[i] * Math.cos(theta);
+    imag += series[i] * Math.sin(theta);
+  }
+  // DC 제외, 진폭 정규화
+  real = real * 2 / N;
+  imag = imag * 2 / N;
+  const amp = Math.sqrt(real * real + imag * imag);
+  const phase = Math.atan2(imag, real);
+  // 미래 시점 N-1+t 에서의 파동값
+  const futureTheta = 2 * Math.PI * (N - 1 + t) / T;
+  const value = real * Math.cos(futureTheta) + imag * Math.sin(futureTheta);
+  return { amp, phase, value };
+}
+
+// 모든 활성 주기에 대해 합성 점수 계산
+function compositeScores(series, cycles, t = 1) {
+  const active = cycles.filter(c => c.on);
+  const scores = {};
+  for (let n = 1; n <= 45; n++) {
+    let total = 0;
+    for (const c of active) {
+      const f = fourierAt(series[n], c.weeks, t);
+      total += f.value;
     }
+    scores[n] = total;
+  }
+  return scores;
+}
 
-    // -----------------------------------------
-    // 탭 전환 로직
-    // -----------------------------------------
-    function switchTab(tabName) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        
-        document.getElementById(`tab-${tabName}`).classList.add('active');
-        event.currentTarget.classList.add('active');
+/* ---------- 동행번호 공명 ---------- */
+function resonanceMatrix(draws) {
+  const M = Array.from({length: 46}, () => new Array(46).fill(0));
+  draws.forEach(d => {
+    const ns = d.numbers;
+    for (let i = 0; i < ns.length; i++)
+      for (let j = i+1; j < ns.length; j++) {
+        M[ns[i]][ns[j]]++;
+        M[ns[j]][ns[i]]++;
+      }
+  });
+  return M;
+}
 
-        if(tabName === 'input') renderInputForms();
-        if(tabName === 'client') renderClientList();
-        if(tabName === 'record') renderRecords();
-        if(tabName === 'settle') renderSettlements();
+/* ---------- 단일 번호 FFT (지배 주기 찾기) ---------- */
+function dominantPeriods(series, topK = 3) {
+  const N = series.length;
+  const result = [];
+  // 주기 T = 4 ~ N/2 까지 스캔
+  const minT = 4;
+  const maxT = Math.min(800, Math.floor(N / 2));
+  for (let T = minT; T <= maxT; T++) {
+    const f = fourierAt(series, T, 0);
+    result.push({ period: T, amp: f.amp });
+  }
+  result.sort((a,b) => b.amp - a.amp);
+  return result.slice(0, topK);
+}
+function spectrum(series) {
+  const N = series.length;
+  const minT = 4;
+  const maxT = Math.min(800, Math.floor(N / 2));
+  const arr = [];
+  for (let T = minT; T <= maxT; T++) {
+    const f = fourierAt(series, T, 0);
+    arr.push({ period: T, amp: f.amp });
+  }
+  return arr;
+}
+
+/* ===========================================================
+   UI 렌더링
+   =========================================================== */
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+function renderPeriodList() {
+  const list = $('#period-list');
+  list.innerHTML = '';
+  CYCLES.forEach((c, i) => {
+    const row = document.createElement('div');
+    row.className = 'period-row';
+    row.innerHTML = `
+      <input type="checkbox" class="checkbox" ${c.on ? 'checked' : ''} data-i="${i}">
+      <div class="period-name">${c.name}</div>
+      <div class="period-meta">${c.weeks}회차</div>
+      ${c.removable ? `<button class="btn small" data-rm="${i}" style="padding:4px 8px;font-size:11px;">×</button>` : ''}
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      CYCLES[+e.target.dataset.i].on = e.target.checked;
+      renderAll();
+    });
+  });
+  list.querySelectorAll('button[data-rm]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      CYCLES.splice(+e.target.dataset.rm, 1);
+      renderPeriodList();
+      renderAll();
+    });
+  });
+  // 위상 패널 select 갱신
+  const sel = $('#phase-period');
+  if (sel) {
+    sel.innerHTML = CYCLES.filter(c => c.on)
+      .map((c, i) => `<option value="${c.weeks}">${c.name} (${c.weeks})</option>`).join('');
+  }
+}
+
+function renderRecommend(scores) {
+  const ranked = Object.entries(scores)
+    .map(([n, v]) => ({ n: +n, v }))
+    .sort((a,b) => b.v - a.v);
+  const top6 = ranked.slice(0, 6).sort((a,b) => a.n - b.n);
+  const wrap = $('#recommend-nums');
+  wrap.innerHTML = '';
+  top6.forEach(t => {
+    const c = document.createElement('span');
+    c.className = 'chip glow';
+    c.textContent = t.n;
+    wrap.appendChild(c);
+  });
+  $('#recommend-meta').textContent = 
+    `합성점수 ${ranked[0].v.toFixed(3)} ~ ${top6[top6.length-1].v.toFixed(3)} · 활성 주기 ${CYCLES.filter(c=>c.on).map(c=>c.name).join(' · ')}`;
+}
+
+function renderTableSuper(scores) {
+  const ranked = Object.entries(scores)
+    .map(([n, v]) => ({ n: +n, v }))
+    .sort((a,b) => b.v - a.v);
+  const html = `
+    <thead><tr><th>순</th><th>번호</th><th>점수</th><th>강도</th></tr></thead>
+    <tbody>
+      ${ranked.slice(0, 12).map((r, i) => {
+        const bar = Math.max(0, Math.min(1, (r.v + 0.5))) * 100;
+        return `<tr>
+          <td>${i+1}</td>
+          <td><span class="${r.v > 0 ? 'text-accent' : 'text-mute'}">${r.n}</span></td>
+          <td>${r.v.toFixed(3)}</td>
+          <td><div style="height:4px; background:var(--line); border-radius:2px; width:80px;"><div style="height:100%; background:${r.v > 0 ? 'var(--accent)' : 'var(--cool)'}; width:${bar}%; border-radius:2px;"></div></div></td>
+        </tr>`;
+      }).join('')}
+    </tbody>`;
+  $('#table-super').innerHTML = html;
+}
+
+/* --- 캔버스: 파동 중첩 --- */
+function drawSuperposition(series) {
+  const c = $('#canvas-super');
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = 320;
+  c.width = w * dpr; c.height = h * dpr;
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  // 격자 + 0 기준선
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = (i / 4) * h;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+
+  const active = CYCLES.filter(c => c.on);
+  if (active.length === 0) return;
+
+  // 1~45 모든 번호의 합성 파동을 미래 0~52 회차로 그림
+  const horizon = 52;
+  const N = series[1].length;
+  if (N < 100) return;
+
+  // 모든 번호의 시계열에 대해 활성 주기 파라미터 미리 계산
+  const params = {}; // [n][cycleIdx] = {amp, phase, real, imag}
+  for (let n = 1; n <= 45; n++) {
+    params[n] = active.map(c => {
+      // fourierAt 안의 real/imag 다시 계산
+      let real = 0, imag = 0;
+      const T = c.weeks;
+      const s = series[n];
+      for (let i = 0; i < N; i++) {
+        const theta = 2 * Math.PI * i / T;
+        real += s[i] * Math.cos(theta);
+        imag += s[i] * Math.sin(theta);
+      }
+      real = real * 2 / N;
+      imag = imag * 2 / N;
+      return { real, imag, T };
+    });
+  }
+
+  // 모든 번호의 합성 파동 그리기 (얇게)
+  ctx.lineWidth = 0.5;
+  for (let n = 1; n <= 45; n++) {
+    ctx.beginPath();
+    for (let t = 0; t <= horizon; t++) {
+      let v = 0;
+      for (const p of params[n]) {
+        const theta = 2 * Math.PI * (N - 1 + t) / p.T;
+        v += p.real * Math.cos(theta) + p.imag * Math.sin(theta);
+      }
+      // 정규화 시각화
+      const x = (t / horizon) * w;
+      const y = h/2 - v * h * 0.6;
+      if (t === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
-
-    // -----------------------------------------
-    // 1. 거래처 등록 로직 (복잡한 정산 룰 반영)
-    // -----------------------------------------
-    function addClient() {
-        const name = document.getElementById('clientName').value;
-        const price = Number(document.getElementById('clientPrice').value);
-        const cutoffDay = Number(document.getElementById('clientCutoffDay').value);
-        const monthOffset = Number(document.getElementById('clientMonthOffset').value);
-        const payoutDay = Number(document.getElementById('clientPayoutDay').value);
-
-        if(!name || !price || !cutoffDay || !payoutDay) return alert('모든 정보를 입력해주세요.');
-
-        const newClient = {
-            id: Date.now().toString(),
-            name: name,
-            price: price,
-            rule: { cutoffDay, monthOffset, payoutDay }
-        };
-        
-        clients.push(newClient);
-        localStorage.setItem('nouema_clients', JSON.stringify(clients));
-        
-        document.getElementById('clientName').value = '';
-        document.getElementById('clientPrice').value = '';
-        document.getElementById('clientCutoffDay').value = '';
-        document.getElementById('clientMonthOffset').value = '1';
-        document.getElementById('clientPayoutDay').value = '';
-        
-        renderClientList();
-        alert('거래처가 등록되었습니다.');
+    // 색상: 시점 t=1 기준 양/음
+    let val0 = 0;
+    for (const p of params[n]) {
+      const theta = 2 * Math.PI * (N) / p.T;
+      val0 += p.real * Math.cos(theta) + p.imag * Math.sin(theta);
     }
-
-    function renderClientList() {
-        const list = document.getElementById('clientList');
-        list.innerHTML = clients.map(c => {
-            // 과거 버전 데이터(단순 settleDay만 있던 구조) 호환성 처리
-            const rule = c.rule || { cutoffDay: 31, monthOffset: 0, payoutDay: c.settleDay || 1 };
-            
-            return `
-            <div class="list-item" style="align-items: flex-start;">
-                <div>
-                    <strong>${c.name}</strong> <span class="badge">${c.price.toLocaleString()}원</span><br>
-                    <span class="rule-badge">매월 ${rule.cutoffDay}일 마감 → ${offsetTexts[rule.monthOffset]} ${rule.payoutDay}일 지급</span>
-                </div>
-            </div>
-        `}).join('');
+    if (val0 > 0) {
+      ctx.strokeStyle = `rgba(212, 165, 116, ${0.15 + Math.min(1, val0 * 4) * 0.5})`;
+    } else {
+      ctx.strokeStyle = `rgba(90, 122, 153, ${0.15 + Math.min(1, -val0 * 4) * 0.4})`;
     }
+    ctx.stroke();
+  }
 
-    // -----------------------------------------
-    // 2. 당일 입력 로직 (누적 계산)
-    // -----------------------------------------
-    function renderInputForms() {
-        const container = document.getElementById('inputForms');
-        const todayStr = document.getElementById('inputDate').value;
-        
-        if(clients.length === 0) {
-            container.innerHTML = '<p style="color:#777; text-align:center; padding: 20px;">등록된 거래처가 없습니다.</p>';
-            return;
-        }
+  // 현재 시점 (t=1) 세로선
+  const x0 = (1 / horizon) * w;
+  ctx.strokeStyle = 'rgba(212, 165, 116, 0.6)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(x0, 0); ctx.lineTo(x0, h);
+  ctx.stroke();
+  ctx.setLineDash([]);
 
-        container.innerHTML = clients.map(c => {
-            let lastCumulative = 0;
-            const sortedDates = Object.keys(records).sort().reverse();
-            for(let date of sortedDates) {
-                if(date < todayStr && records[date][c.id]) {
-                    lastCumulative = records[date][c.id].cumulative;
-                    break;
-                }
-            }
+  ctx.fillStyle = '#d4a574';
+  ctx.font = '10px JetBrains Mono';
+  ctx.fillText('이번 회차', x0 + 6, 14);
+  ctx.fillStyle = '#444';
+  ctx.fillText(`+${horizon}회차 미래`, w - 90, 14);
+}
 
-            const todayData = records[todayStr]?.[c.id] || { cumulative: '', daily: 0 };
-
-            return `
-            <div class="input-row">
-                <div>
-                    <strong>${c.name}</strong>
-                    <div style="font-size:0.8rem; color:#888;">이전 누적: ${lastCumulative}건</div>
-                </div>
-                <div>
-                    <input type="number" id="input_${c.id}" value="${todayData.cumulative}" placeholder="현재 누적" oninput="calculateDaily('${c.id}', ${lastCumulative})">
-                    <div class="calc-result" id="calc_${c.id}">당일: ${todayData.daily}건</div>
-                </div>
-            </div>`;
-        }).join('');
+/* --- 격자 --- */
+function drawGrid(scores) {
+  const grid = $('#num-grid');
+  grid.innerHTML = '';
+  const vals = Object.values(scores);
+  const max = Math.max(...vals.map(Math.abs)) || 1;
+  for (let n = 1; n <= 45; n++) {
+    const v = scores[n] / max; // -1..1
+    const cell = document.createElement('div');
+    cell.className = 'num-cell';
+    let bg;
+    if (v > 0) {
+      bg = `rgba(212, 165, 116, ${Math.min(1, Math.abs(v))})`;
+    } else {
+      bg = `rgba(90, 122, 153, ${Math.min(1, Math.abs(v))})`;
     }
+    cell.innerHTML = `<div class="energy" style="background:${bg};"></div><span class="lbl">${n}</span>`;
+    grid.appendChild(cell);
+  }
+}
 
-    function calculateDaily(clientId, lastCumulative) {
-        const currentCumulative = Number(document.getElementById(`input_${clientId}`).value);
-        const dailyCount = currentCumulative - lastCumulative;
-        const resultDiv = document.getElementById(`calc_${clientId}`);
-        
-        if (currentCumulative === 0 || document.getElementById(`input_${clientId}`).value === '') {
-            resultDiv.innerText = '당일: 0건';
-            resultDiv.style.color = 'var(--text-muted)';
-        } else {
-            resultDiv.innerText = `당일: ${dailyCount > 0 ? '+' : ''}${dailyCount}건`;
-            resultDiv.style.color = dailyCount >= 0 ? 'var(--secondary)' : '#d32f2f';
-        }
+/* --- 동행 공명 매트릭스 --- */
+let RESONANCE = null;
+function drawResonance() {
+  const c = $('#canvas-resonance');
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = 380;
+  c.width = w * dpr; c.height = h * dpr;
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const size = Math.min(w, h);
+  const offX = (w - size) / 2;
+  const offY = 0;
+  const cellW = size / 45;
+
+  // 최댓값
+  let max = 0;
+  for (let i = 1; i <= 45; i++)
+    for (let j = 1; j <= 45; j++)
+      if (i !== j && RESONANCE[i][j] > max) max = RESONANCE[i][j];
+
+  for (let i = 1; i <= 45; i++) {
+    for (let j = 1; j <= 45; j++) {
+      const v = RESONANCE[i][j] / max;
+      let alpha = i === j ? 0.05 : Math.pow(v, 1.2);
+      ctx.fillStyle = i === j ? '#1a1a1a' : `rgba(212, 165, 116, ${alpha})`;
+      ctx.fillRect(offX + (i-1)*cellW, offY + (j-1)*cellW, cellW, cellW);
     }
+  }
+}
 
-    function saveDailyRecords() {
-        const dateStr = document.getElementById('inputDate').value;
-        if(!records[dateStr]) records[dateStr] = {};
+function renderResonancePick(n) {
+  if (!RESONANCE) return;
+  const list = [];
+  for (let m = 1; m <= 45; m++) {
+    if (m !== n) list.push({ m, v: RESONANCE[n][m] });
+  }
+  list.sort((a,b) => b.v - a.v);
+  const top = list.slice(0, 8);
+  const wrap = $('#resonance-result');
+  wrap.innerHTML = `<div class="small text-mute mb-8">번호 ${n}와 가장 많이 동행한 8개</div>`;
+  const inner = document.createElement('div');
+  top.forEach(t => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `${t.m}<sub style="font-size:8px;opacity:0.6;margin-left:2px;">${t.v}</sub>`;
+    inner.appendChild(chip);
+  });
+  wrap.appendChild(inner);
+}
 
-        clients.forEach(c => {
-            const inputVal = document.getElementById(`input_${c.id}`).value;
-            if(inputVal !== '') {
-                const currentCumulative = Number(inputVal);
-                
-                let lastCumulative = 0;
-                const sortedDates = Object.keys(records).sort().reverse();
-                for(let d of sortedDates) {
-                    if(d < dateStr && records[d][c.id]) {
-                        lastCumulative = records[d][c.id].cumulative;
-                        break;
-                    }
-                }
-                
-                const dailyCount = currentCumulative - lastCumulative;
-                records[dateStr][c.id] = { cumulative: currentCumulative, daily: dailyCount };
-            }
-        });
+/* --- FFT --- */
+function drawFFT(n, series) {
+  const sp = spectrum(series[n]);
+  const c = $('#canvas-fft');
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = 220;
+  c.width = w * dpr; c.height = h * dpr;
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
 
-        localStorage.setItem('nouema_records', JSON.stringify(records));
-        alert(`${dateStr} 실적이 저장되었습니다.`);
+  const max = Math.max(...sp.map(s => s.amp));
+  ctx.strokeStyle = '#d4a574';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  sp.forEach((s, i) => {
+    const x = (i / sp.length) * w;
+    const y = h - (s.amp / max) * h * 0.9;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // 상위 3개 마커
+  const top = [...sp].sort((a,b) => b.amp - a.amp).slice(0, 3);
+  top.forEach(t => {
+    const idx = sp.findIndex(s => s.period === t.period);
+    const x = (idx / sp.length) * w;
+    const y = h - (t.amp / max) * h * 0.9;
+    ctx.fillStyle = '#d4a574';
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillStyle = '#ececec';
+    ctx.fillText(`${t.period}`, x + 6, y - 4);
+  });
+
+  // 축
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, h-1); ctx.lineTo(w, h-1);
+  ctx.stroke();
+  ctx.fillStyle = '#666';
+  ctx.font = '10px JetBrains Mono';
+  ctx.fillText(`주기 ${sp[0].period}`, 4, h-4);
+  ctx.fillText(`${sp[sp.length-1].period}`, w-40, h-4);
+
+  $('#fft-info').innerHTML = `번호 ${n}의 가장 강한 3개 주기: ${top.map(t => `<span class="text-accent">${t.period}</span>`).join(', ')} 회차`;
+}
+
+function renderTableFFT(series) {
+  const rows = [];
+  for (let n = 1; n <= 45; n++) {
+    const top = dominantPeriods(series[n], 3);
+    rows.push({ n, top });
+  }
+  const html = `
+    <thead><tr><th>번호</th><th>1차</th><th>2차</th><th>3차</th></tr></thead>
+    <tbody>
+      ${rows.map(r => `<tr>
+        <td>${r.n}</td>
+        ${r.top.map(t => `<td>${t.period}</td>`).join('')}
+      </tr>`).join('')}
+    </tbody>`;
+  $('#table-fft').innerHTML = html;
+}
+
+/* --- 위상 공간 --- */
+function drawPhase(series, T) {
+  const c = $('#canvas-phase');
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = 380;
+  c.width = w * dpr; c.height = h * dpr;
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const cx = w/2, cy = h/2;
+  const R = Math.min(w, h) / 2 - 24;
+
+  // 동심원
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 1;
+  [0.33, 0.66, 1].forEach(r => {
+    ctx.beginPath(); ctx.arc(cx, cy, R*r, 0, Math.PI*2); ctx.stroke();
+  });
+  // 십자
+  ctx.beginPath(); ctx.moveTo(cx-R, cy); ctx.lineTo(cx+R, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy-R); ctx.lineTo(cx, cy+R); ctx.stroke();
+
+  // 각 번호의 위상 + 진폭
+  const N = series[1].length;
+  const points = [];
+  let maxAmp = 0;
+  for (let n = 1; n <= 45; n++) {
+    const f = fourierAt(series[n], T, 1);
+    points.push({ n, amp: f.amp, phase: f.phase, value: f.value });
+    if (f.amp > maxAmp) maxAmp = f.amp;
+  }
+
+  points.forEach(p => {
+    const r = (p.amp / maxAmp) * R;
+    const x = cx + r * Math.cos(p.phase);
+    const y = cy + r * Math.sin(p.phase);
+    const isWarm = p.value > 0;
+    ctx.fillStyle = isWarm ? '#d4a574' : '#5a7a99';
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#ececec';
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillText(p.n, x + 7, y + 3);
+  });
+
+  // 라벨
+  ctx.fillStyle = '#444';
+  ctx.font = '10px JetBrains Mono';
+  ctx.fillText('0°', cx + R - 14, cy - 6);
+  ctx.fillText('180°', cx - R + 4, cy - 6);
+  ctx.fillText('현재 진행 방향', cx + 6, cy - R + 12);
+}
+
+/* ===========================================================
+   메인 렌더
+   =========================================================== */
+function renderAll() {
+  if (DRAWS.length === 0) return;
+  const series = buildSeries(DRAWS);
+  const scores = compositeScores(series, CYCLES, 1);
+
+  renderRecommend(scores);
+  renderTableSuper(scores);
+  drawSuperposition(series);
+  drawGrid(scores);
+
+  // 공명
+  if (!RESONANCE) RESONANCE = resonanceMatrix(DRAWS);
+  drawResonance();
+  renderResonancePick(+($('#resonance-pick').value || 1));
+
+  // FFT
+  drawFFT(+($('#fft-num').value || 1), series);
+  renderTableFFT(series);
+
+  // 위상
+  const phaseT = +($('#phase-period').value || (CYCLES.find(c=>c.on)||{weeks:312}).weeks);
+  drawPhase(series, phaseT);
+}
+
+function showAnalysis() {
+  $('#loader-empty').style.display = 'none';
+  $('#loader-progress').style.display = 'none';
+  $('#loader-summary').style.display = 'block';
+  $('#analysis').style.display = 'block';
+
+  $('#stat-total').textContent = DRAWS.length;
+  $('#stat-from').textContent = DRAWS[0].date.slice(2).replace(/-/g, '·');
+  $('#stat-to').textContent = DRAWS[DRAWS.length-1].date.slice(2).replace(/-/g, '·');
+
+  RESONANCE = null;
+  renderPeriodList();
+  renderAll();
+}
+
+/* ---------- 이벤트 ---------- */
+$('#btn-load').addEventListener('click', async () => {
+  $('#loader-empty').style.display = 'none';
+  $('#loader-progress').style.display = 'block';
+  try {
+    DRAWS = await loadAll((cur, est, _) => {
+      $('#progress-text').textContent = '로딩 중…';
+      $('#progress-count').textContent = `${cur} / ${est}`;
+      $('#progress-bar').style.width = Math.min(100, (cur / est) * 100) + '%';
+    });
+    if (DRAWS.length === 0) {
+      $('#progress-text').textContent = '데이터를 불러오지 못했습니다 (CORS 프록시 오류)';
+      return;
     }
+    showAnalysis();
+  } catch (e) {
+    $('#progress-text').textContent = '오류: ' + e.message;
+  }
+});
 
-    document.getElementById('inputDate').addEventListener('change', renderInputForms);
+$('#btn-clear').addEventListener('click', () => {
+  if (confirm('캐시를 지우시겠습니까?')) clearCache();
+});
+$('#btn-clear2')?.addEventListener('click', () => {
+  if (confirm('캐시를 지우시겠습니까?')) {
+    clearCache();
+    location.reload();
+  }
+});
+$('#btn-refresh').addEventListener('click', async () => {
+  $('#loader-summary').style.display = 'none';
+  $('#loader-progress').style.display = 'block';
+  DRAWS = await loadAll((cur, est) => {
+    $('#progress-text').textContent = '갱신 중…';
+    $('#progress-count').textContent = `${cur} / ${est}`;
+    $('#progress-bar').style.width = Math.min(100, (cur / est) * 100) + '%';
+  });
+  showAnalysis();
+});
 
-    // -----------------------------------------
-    // 3. 기록 확인 로직
-    // -----------------------------------------
-    function renderRecords() {
-        const monthStr = document.getElementById('recordMonth').value; 
-        const list = document.getElementById('recordList');
-        
-        let monthTotalCounts = 0;
-        let monthTotalRevenue = 0;
-        let html = '';
+$('#btn-add-period').addEventListener('click', () => {
+  const v = +($('#custom-period').value);
+  if (v < 4 || v > 2000) return alert('4~2000 사이 회차 수');
+  CYCLES.push({ name: `${v}회차`, weeks: v, on: true, removable: true });
+  $('#custom-period').value = '';
+  renderPeriodList();
+  renderAll();
+});
 
-        const dates = Object.keys(records).filter(d => d.startsWith(monthStr)).sort().reverse();
+// 탭
+$$('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    $$('.tab').forEach(x => x.classList.remove('active'));
+    $$('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    $('#panel-' + t.dataset.panel).classList.add('active');
+    // 탭 진입 시 다시 그리기 (canvas 사이즈 안정화)
+    setTimeout(() => renderAll(), 50);
+  });
+});
 
-        if(dates.length === 0) {
-            list.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">해당 월의 기록이 없습니다.</p>';
-            return;
-        }
+$('#resonance-pick').addEventListener('input', e => {
+  const n = Math.max(1, Math.min(45, +e.target.value || 1));
+  renderResonancePick(n);
+});
 
-        dates.forEach(date => {
-            html += `<div style="font-weight:bold; margin-top:15px; border-bottom:1px solid var(--border); padding-bottom:5px;">📅 ${date}</div>`;
-            
-            for(const [clientId, data] of Object.entries(records[date])) {
-                const client = clients.find(c => c.id === clientId);
-                if(client && data.daily > 0) {
-                    const revenue = data.daily * client.price;
-                    monthTotalCounts += data.daily;
-                    monthTotalRevenue += revenue;
-                    
-                    html += `
-                    <div class="list-item">
-                        <span>${client.name}</span>
-                        <div style="text-align:right;">
-                            <span class="badge">+${data.daily}건</span> (누적 ${data.cumulative})<br>
-                            <span style="font-size:0.8rem; color:#666;">${revenue.toLocaleString()}원</span>
-                        </div>
-                    </div>`;
-                }
-            }
-        });
+$('#fft-num').addEventListener('input', e => {
+  if (DRAWS.length === 0) return;
+  const n = Math.max(1, Math.min(45, +e.target.value || 1));
+  drawFFT(n, buildSeries(DRAWS));
+});
 
-        const summaryHtml = `
-            <div style="background:var(--highlight); padding:15px; border-radius:8px; margin-bottom:15px; text-align:center;">
-                <strong>${monthStr} 총 합계</strong><br>
-                <span style="font-size:1.2rem; color:var(--primary);">${monthTotalCounts}건 / ${monthTotalRevenue.toLocaleString()}원</span>
-            </div>
-        `;
+document.addEventListener('change', e => {
+  if (e.target.id === 'phase-period' && DRAWS.length > 0) {
+    drawPhase(buildSeries(DRAWS), +e.target.value);
+  }
+});
 
-        list.innerHTML = summaryHtml + html;
-    }
+// 캐시 자동 로드
+window.addEventListener('DOMContentLoaded', () => {
+  const cached = loadCache();
+  if (cached.length > 0) {
+    DRAWS = cached;
+    showAnalysis();
+  }
+});
 
-    // -----------------------------------------
-    // 4. 동적 정산 추적 로직 (가장 핵심 변경부)
-    // -----------------------------------------
-    function renderSettlements() {
-        const list = document.getElementById('settleList');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // 오늘 자정 기준으로 시간 초기화 (D-Day 정확한 계산을 위해)
-
-        if(clients.length === 0) {
-            list.innerHTML = '<p style="text-align:center; color:#777; padding: 20px;">거래처를 먼저 등록해주세요.</p>';
-            return;
-        }
-
-        let html = '';
-
-        clients.forEach(c => {
-            const rule = c.rule || { cutoffDay: 31, monthOffset: 0, payoutDay: c.settleDay || 1 };
-            
-            let payouts = {};
-            let totalPendingAmount = 0;
-
-            // 모든 기록을 뒤지며 이 거래처의 배송건이 언제 정산되는지 분류
-            for (const [dateStr, data] of Object.entries(records)) {
-                if (data[c.id] && data[c.id].daily > 0) {
-                    // 이 배송건의 실제 지급일 계산
-                    let pDate = getPayoutDate(dateStr, rule);
-                    pDate.setHours(0, 0, 0, 0);
-                    
-                    // 지급일이 오늘이거나 미래인 것들만 "미정산"으로 간주
-                    if (pDate >= today) {
-                        let pDateKey = pDate.getTime();
-                        if (!payouts[pDateKey]) payouts[pDateKey] = { date: pDate, amount: 0 };
-                        
-                        let amount = data[c.id].daily * c.price;
-                        payouts[pDateKey].amount += amount;
-                        totalPendingAmount += amount;
-                    }
-                }
-            }
-
-            // 가장 가까운 미래의 정산일 찾기
-            let futurePayoutKeys = Object.keys(payouts).sort((a,b) => a - b);
-            
-            if (futurePayoutKeys.length > 0) {
-                let nearestKey = futurePayoutKeys[0];
-                let nearestPayout = payouts[nearestKey];
-                
-                // D-Day 계산
-                let diffTime = nearestPayout.date - today;
-                let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                let dDayText = diffDays === 0 ? 'D-Day' : `D-${diffDays}`;
-                let dDayClass = diffDays <= 3 ? 'settle-dday' : 'settle-safe';
-
-                html += `
-                <div class="list-item" style="flex-direction:column; align-items:flex-start;">
-                    <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <strong>${c.name}</strong>
-                        <span class="${dDayClass}">${dDayText} (${nearestPayout.date.getMonth()+1}/${nearestPayout.date.getDate()})</span>
-                    </div>
-                    <div style="width:100%; display:flex; justify-content:space-between; font-size:0.95rem; color:#333; margin-bottom: 4px;">
-                        <span>이번 정산 예정금</span>
-                        <strong style="color:var(--primary);">${nearestPayout.amount.toLocaleString()}원</strong>
-                    </div>
-                    ${futurePayoutKeys.length > 1 ? `
-                    <div style="width:100%; display:flex; justify-content:space-between; font-size:0.8rem; color:#888;">
-                        <span>총 대기 금액 (차기분 포함)</span>
-                        <span>${totalPendingAmount.toLocaleString()}원</span>
-                    </div>` : ''}
-                </div>`;
-            } else {
-                html += `
-                <div class="list-item" style="flex-direction:column; align-items:flex-start; opacity: 0.6;">
-                    <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <strong>${c.name}</strong>
-                        <span style="font-size: 0.8rem;">정산 대기건 없음</span>
-                    </div>
-                </div>`;
-            }
-        });
-
-        list.innerHTML = html;
-    }
-
-    // 초기 렌더링
-    renderInputForms();
+// 윈도우 리사이즈
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (DRAWS.length > 0) renderAll(); }, 200);
+});
 </script>
 </body>
 </html>
